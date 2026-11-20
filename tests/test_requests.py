@@ -71,9 +71,12 @@ End Select
     thread = threading.Thread(target=server.serve_forever)
     thread.start()
     try:
-        command = ["cscript", "//nologo", "//U", "test.vbs"]
+        command = [str(Path(os.environ["SystemRoot"], "SysWOW64", "cscript.exe")), "//nologo", "//E:VBScript", "//U", str(Path(tmp, "test.vbs"))]
+        probe = Path(tmp, "probe.vbs")
+        probe.write_text('WScript.Echo "Host OK"\r\n', encoding="utf-16")
+        print(subprocess.run(command[:-1] + [str(probe)], capture_output=True), flush=True)
         for args, field in [([], "info"), (["send"], "items"), (["status", UUID], "item")]:
-            result = subprocess.run(command + args, cwd=tmp, env=env, check=True, capture_output=True, encoding="utf-16-le")
+            result = subprocess.run(command + args, cwd=tmp, env=env, capture_output=True, encoding="utf-16-le", errors="replace")
             print(args, ascii(result.stdout), ascii(result.stderr), calls, flush=True)
             assert field in json.loads(result.stdout.lstrip('\ufeff'))
         env["REDSMS_FROM"] = "reject"
