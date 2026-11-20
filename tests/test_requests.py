@@ -74,7 +74,8 @@ End Select
         command = ["cscript", "//nologo", "//U", "test.vbs"]
         for args, field in [([], "info"), (["send"], "items"), (["status", UUID], "item")]:
             result = subprocess.run(command + args, cwd=tmp, env=env, check=True, capture_output=True, encoding="utf-16-le")
-            assert field in json.loads(result.stdout)
+            print(args, ascii(result.stdout), ascii(result.stderr), calls, flush=True)
+            assert field in json.loads(result.stdout.lstrip('\ufeff'))
         env["REDSMS_FROM"] = "reject"
         result = subprocess.run(command + ["send"], cwd=tmp, env=env, capture_output=True, encoding="utf-16-le")
         assert result.returncode and "420" in result.stderr, result
