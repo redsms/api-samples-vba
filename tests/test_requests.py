@@ -7,6 +7,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 import threading
+from xml.sax.saxutils import escape
 from urllib.parse import parse_qs, urlsplit
 
 UUID = "00000000-0000-4000-8000-000000000001"
@@ -54,34 +55,57 @@ with tempfile.TemporaryDirectory() as tmp, HTTPServer(("127.0.0.1", 0), Handler)
     # Run a temporary copy with a loopback address, keeping the published sample pointed at RED SMS.
     source = Path("RedSms.bas")
     code = source.read_text().replace("https://cp.redsms.ru/api/", f"http://127.0.0.1:{server.server_port}/api/")
-    # Host the same procedures under Windows Script Host in CI (Excel is not installed).
-    code = code.partition("\n")[2].replace("Debug.Print ", "WScript.Echo ")
+    # LibreOffice Basic in VBA compatibility mode hosts the module on Windows.
+    profile = Path(tmp, "profile")
+    basic = profile / "user/basic"
+    standard = basic / "Standard"
+    office = str(Path(os.environ["ProgramFiles"], "LibreOffice/program/soffice.com"))
+    subprocess.run([office, "-env:UserInstallation=" + profile.as_uri(), "--headless", "--terminate_after_init"], check=True, timeout=60)
+    standard.mkdir(parents=True, exist_ok=True)
+    ns = 'xmlns:library="http://openoffice.org/2000/library" xmlns:xlink="http://www.w3.org/1999/xlink"'
+    (basic / "script.xlc").write_text(f'<library:libraries {ns}><library:library library:name="Standard" library:link="false"/></library:libraries>')
+    (standard / "script.xlb").write_text(f'<library:library {ns} library:name="Standard" library:readonly="false" library:passwordprotected="false"><library:element library:name="RedSms"/></library:library>')
+    code = "Option VBASupport 1\n" + code.partition("\n")[2].replace("Debug.Print ", "Print #1, ")
     driver = """
-Select Case WScript.Arguments.Count
-Case 0
-    ClientInfo
-Case 1
-    SendSms "Тестовое сообщение от redsms.ru"
-Case 2
-    MessageStatus WScript.Arguments(1)
-End Select
+Sub RunTest
+    On Error GoTo Failed
+    Open Environ("REDSMS_OUTPUT") For Output As #1
+    Select Case Environ("REDSMS_COMMAND")
+        Case "info"
+            ClientInfo
+        Case "send"
+            SendSms "Тестовое сообщение от redsms.ru"
+        Case "status"
+            MessageStatus "00000000-0000-4000-8000-000000000001"
+    End Select
+    Close #1
+    Exit Sub
+Failed:
+    Print #1, "ERROR " & Err.Description
+    Close #1
+End Sub
 """
-    Path(tmp, "test.vbs").write_text(code + driver, encoding="utf-16")
+    xml = '<script:module xmlns:script="http://openoffice.org/2000/script" script:name="RedSms" script:language="StarBasic">' + escape(code + driver) + '</script:module>'
+    (standard / "RedSms.xba").write_text(xml, encoding="utf-8")
     env = dict(os.environ, REDSMS_LOGIN="test", REDSMS_API_KEY="dummy", REDSMS_FROM="A & B", REDSMS_TO="+70000000000")
     thread = threading.Thread(target=server.serve_forever)
     thread.start()
     try:
-        command = [str(Path(os.environ["SystemRoot"], "SysWOW64", "cscript.exe")), "//nologo", "//E:VBScript", "//U", str(Path(tmp, "test.vbs"))]
-        probe = Path(tmp, "probe.vbs")
-        probe.write_text('WScript.Echo "Host OK"\r\n', encoding="utf-16")
-        print(subprocess.run(command[:-1] + [str(probe)], capture_output=True), flush=True)
-        for args, field in [([], "info"), (["send"], "items"), (["status", UUID], "item")]:
-            result = subprocess.run(command + args, cwd=tmp, env=env, capture_output=True, encoding="utf-16-le", errors="replace")
-            print(args, ascii(result.stdout), ascii(result.stderr), calls, flush=True)
-            assert field in json.loads(result.stdout.lstrip('\ufeff'))
-        env["REDSMS_FROM"] = "reject"
-        result = subprocess.run(command + ["send"], cwd=tmp, env=env, capture_output=True, encoding="utf-16-le")
-        assert result.returncode and "420" in result.stderr, result
+        command = [str(Path(os.environ["ProgramFiles"], "LibreOffice/program/soffice.com")),
+                   "-env:UserInstallation=" + profile.as_uri(), "--headless", "--norestore",
+                   "macro:///Standard.RedSms.RunTest()"]
+        for action, field in [("info", "info"), ("send", "items"), ("status", "item"), ("send", "420")]:
+            output = Path(tmp, field + ".txt")
+            env.update(REDSMS_OUTPUT=str(output), REDSMS_COMMAND=action)
+            if field == "420":
+                env["REDSMS_FROM"] = "reject"
+            subprocess.run(command, env=env, timeout=60, check=True)
+            body = output.read_bytes().decode("utf-8", errors="replace")
+            if field == "420":
+                assert "ERROR" in body and "420" in body, body
+            else:
+                assert not body.startswith("ERROR"), body
+                assert field in json.loads(body), body
         assert calls == [("GET", "/api/client/info", 200), ("POST", "/api/message", 200),
                          ("GET", "/api/message/" + UUID, 200), ("POST", "/api/message", 420)], calls
     finally:
