@@ -4,9 +4,7 @@ Option Explicit
 Private Const ApiBase = "https://cp.redsms.ru/api/"
 
 Private Function Setting(ByVal name)
-    Dim shell
-    Set shell = CreateObject("WScript.Shell")
-    Setting = shell.Environment("PROCESS")(name)
+    Setting = Environ(CStr(name))
     If Len(Setting) = 0 Then Err.Raise 5, "RedSms", "Set " & name
 End Function
 
@@ -20,17 +18,17 @@ Private Function BytesHex(ByVal bytes)
 End Function
 
 Private Function Signature(ByVal value)
-    Dim utf8, md5, bytes
+    Dim utf8 As Object, md5 As Object, bytes() As Byte
     Set utf8 = CreateObject("System.Text.UTF8Encoding")
     Set md5 = CreateObject("System.Security.Cryptography.MD5CryptoServiceProvider")
-    bytes = utf8.GetBytes_4(value)
+    bytes = utf8.GetBytes_4(CStr(value))
     Signature = BytesHex(md5.ComputeHash_2((bytes)))
 End Function
 
 Private Function FormValue(ByVal value)
-    Dim utf8, bytes, i, result
+    Dim utf8 As Object, bytes() As Byte, i As Long, result As String
     Set utf8 = CreateObject("System.Text.UTF8Encoding")
-    bytes = utf8.GetBytes_4(value)
+    bytes = utf8.GetBytes_4(CStr(value))
     result = ""
     For i = 0 To UBound(bytes)
         result = result & "%" & Right("0" & Hex(bytes(i)), 2)
@@ -39,8 +37,8 @@ Private Function FormValue(ByVal value)
 End Function
 
 Private Function Request(ByVal method, ByVal path, ByVal values, ByVal body)
-    Dim http, ts
-    ts = CStr(Now) & "-" & CStr(Timer)
+    Dim http As Object, ts As String
+    ts = CStr(CLng(Date)) & "-" & CStr(Timer)
     Set http = CreateObject("WinHttp.WinHttpRequest.5.1")
     http.Open method, ApiBase & path, False
     http.Option(6) = False

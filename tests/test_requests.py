@@ -66,6 +66,10 @@ with tempfile.TemporaryDirectory() as tmp, HTTPServer(("127.0.0.1", 0), Handler)
     (basic / "script.xlc").write_text(f'<library:libraries {ns}><library:library library:name="Standard" library:link="false"/></library:libraries>')
     (standard / "script.xlb").write_text(f'<library:library {ns} library:name="Standard" library:readonly="false" library:passwordprotected="false"><library:element library:name="RedSms"/></library:library>')
     code = "Option VBASupport 1\n" + code.partition("\n")[2].replace("Debug.Print ", "Print #1, ")
+    source_lines = code.splitlines()
+    # VBA line labels make automation errors diagnosable on a headless runner.
+    code = "\n".join(f"{i} {line}" if line.startswith("    ") and not line.lstrip().startswith(("Dim ", "Else", "End If", "Next")) else line
+                     for i, line in enumerate(source_lines, 1))
     driver = """
 Sub RunTest
     On Error GoTo Failed
@@ -81,7 +85,7 @@ Sub RunTest
     Close #1
     Exit Sub
 Failed:
-    Print #1, "ERROR " & Err.Description
+    Print #1, "ERROR " & Erl & " " & Err.Description
     Close #1
 End Sub
 """
