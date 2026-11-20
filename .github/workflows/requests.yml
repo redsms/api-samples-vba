@@ -1,0 +1,10 @@
+name: Windows API requests
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  requests:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - run: python tests/test_requests.py
