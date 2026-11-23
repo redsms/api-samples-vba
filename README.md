@@ -27,6 +27,6 @@
 
 ## Excel для Windows
 
-Вариант Windows пока проходит отдельную проверку. [Черновик Windows](https://github.com/redsms/api-samples-vba/pull/1)
+[Черновик RedSms.bas](windows/RedSms.bas) использует WinHTTP и COM-компоненты .NET Framework. Проверка этого варианта в Excel для Windows ещё предстоит.
 
 [Документация RED SMS HTTP API](https://docs.redsms.ru/http/api/)
