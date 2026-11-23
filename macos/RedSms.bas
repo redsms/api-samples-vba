@@ -36,9 +36,9 @@ Private Function ApiRequest(ByVal action As String, Optional ByVal fields As Str
         Exit Function
     End If
     On Error GoTo ScriptError
-    ApiRequest = AppleScriptTask("RedSms.applescript", "request", _
+    ApiRequest = AppleScriptTask("RedSms.scpt", "request", _
         action & vbLf & accountLogin & vbLf & accountKey & vbLf & fields)
     Exit Function
 ScriptError:
-    ApiRequest = "Check RedSms.applescript in the Excel Application Scripts folder. " & Err.Description
+    ApiRequest = "Check RedSms.scpt in the Excel Application Scripts folder. " & Err.Description
 End Function

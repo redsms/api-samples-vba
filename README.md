@@ -6,7 +6,13 @@
 
 Понадобятся [RedSms.bas](macos/RedSms.bas) и [RedSms.applescript](macos/RedSms.applescript).
 
-1. В Finder нажмите ⌘⇧G и откройте `~/Library/Application Scripts/com.microsoft.Excel/`. Если папки `com.microsoft.Excel` ещё нет, создайте её в `Application Scripts`. Скопируйте туда `RedSms.applescript`.
+1. В Терминале из корня репозитория скомпилируйте AppleScript в папку Excel.
+
+   ```sh
+   script_dir="$HOME/Library/Application Scripts/com.microsoft.Excel"
+   mkdir -p "$script_dir"
+   /usr/bin/osacompile -o "$script_dir/RedSms.scpt" macos/RedSms.applescript
+   ```
 2. Откройте редактор VBA в Excel и импортируйте `RedSms.bas` через **File → Import File**. Если хотите сохранить макросы в книге, используйте формат `.xlsm`.
 3. Запустите `ConfigureRedSms` из списка макросов и введите логин и API-ключ. Пример хранит их в памяти Excel.
 4. Откройте **View → Immediate Window**, чтобы увидеть HTTP-код и тело ответа.
