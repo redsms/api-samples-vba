@@ -1,23 +1,26 @@
-# RED SMS для Excel VBA под Windows
+# RED SMS · VBA для Excel
 
-Модуль использует WinHTTP и COM-классы .NET Framework для расчёта подписи MD5. Нужны настольный Excel для Windows с разрешением на запуск ваших макросов и доступные COM-классы .NET Framework (на некоторых системах требуется компонент .NET Framework 3.5).
+Выберите пример для своей версии настольного Excel. Все запросы используют подпись `sig`.
 
-1. В переменных окружения пользователя задайте `REDSMS_LOGIN` и `REDSMS_API_KEY`. Для отправки также задайте зарегистрированное имя в `REDSMS_FROM` и свой номер с кодом страны в `REDSMS_TO`. Перезапустите Excel после изменения переменных.
-2. Откройте редактор VBA (Alt+F11), выберите File → Import File и импортируйте `RedSms.bas` в свою книгу с поддержкой макросов.
-3. Откройте Immediate Window (Ctrl+G). Выполните `ClientInfo` и убедитесь, что API вернул данные аккаунта.
+## Excel для Mac
 
-Следующая команда отправляет одно платное SMS:
+Понадобятся [RedSms.bas](macos/RedSms.bas) и [RedSms.applescript](macos/RedSms.applescript).
 
-```vb
-SendSms "Тестовое сообщение от redsms.ru"
-```
+1. В Finder нажмите ⌘⇧G и откройте `~/Library/Application Scripts/com.microsoft.Excel/`. Если папки `com.microsoft.Excel` ещё нет, создайте её в `Application Scripts`. Скопируйте туда `RedSms.applescript`.
+2. Откройте редактор VBA в Excel и импортируйте `RedSms.bas` через **File → Import File**. Если хотите сохранить макросы в книге, используйте формат `.xlsm`.
+3. Запустите `ConfigureRedSms` из списка макросов и введите логин и API-ключ. Пример хранит их в памяти Excel.
+4. Откройте **View → Immediate Window**, чтобы увидеть HTTP-код и тело ответа.
 
-В окне появится JSON. Сохраните UUID из `items` и проверьте `errors`. Введите отдельную команду со своим UUID для проверки доставки:
+| Метод | Макрос |
+|---|---|
+| `GET /api/client/info` | `ClientInfo` проверяет доступ к аккаунту |
+| `POST /api/message` | `SendSms` просит имя отправителя, номер и подтверждение отправки одного платного SMS |
+| `GET /api/message/{uuid}` | `MessageStatus` просит UUID из ответа на отправку |
 
-```vb
-MessageStatus "00000000-0000-4000-8000-000000000001"
-```
+При отправке HTTP 200 означает, что сообщение создано. Доставку подтверждает статус `delivered`. При HTTP 420 проверьте баланс. После тайм-аута при отправке исход запроса может быть неизвестен, и повторный POST может создать дубликат.
 
-Статус `delivered` подтверждает доставку SMS. При `created`, `moderation` или `progress` повторите запрос статуса позже. При HTTP 420 проверьте баланс. Результат отправки после сетевого тайм-аута может быть неизвестен: повторный вызов SendSms может создать дубликат.
+## Excel для Windows
 
-[Отправка SMS](https://docs.redsms.ru/http/api/post-message/) · [Статусы](https://docs.redsms.ru/http/api/message/)
+[Черновик RedSms.bas](windows/RedSms.bas) использует WinHTTP и COM-компоненты .NET Framework. Проверка этого варианта в Excel для Windows ещё предстоит.
+
+[Документация RED SMS HTTP API](https://docs.redsms.ru/http/api/)
