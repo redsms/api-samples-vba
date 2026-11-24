@@ -40,8 +40,11 @@ on request(parameters)
         if operation is "info" then
             set endpoint to "client/info"
         else if operation is "send" then
+            if (count of fields) is not 5 then error "Enter one sender and one international phone number"
             set senderName to item 4 of fields
             set recipient to item 5 of fields
+            set phonePattern to current application's NSPredicate's predicateWithFormat:"SELF MATCHES %@" argumentArray:{"[+]?[1-9][0-9]{1,14}"}
+            if not (phonePattern's evaluateWithObject:recipient) then error "Enter one international phone number, for example +12025550123."
             set messageText to "Тестовое сообщение от redsms.ru"
             set endpoint to "message"
             -- The signature uses the values of from, route, text, to in that order.
