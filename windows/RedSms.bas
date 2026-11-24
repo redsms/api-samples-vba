@@ -65,6 +65,10 @@ Public Sub SendSms(ByVal messageText)
     If Len(messageText) = 0 Then Err.Raise 5, "RedSms", "Message is empty"
     sender = Setting("REDSMS_FROM")
     recipient = Setting("REDSMS_TO")
+    Dim phonePattern As Object
+    Set phonePattern = CreateObject("VBScript.RegExp")
+    phonePattern.Pattern = "^[+]?[1-9][0-9]{1,14}$"
+    If Not phonePattern.Test(recipient) Then Err.Raise 5, "RedSms", "Enter one international phone number"
     body = "from=" & FormValue(sender) & "&route=sms&text=" & FormValue(messageText) & "&to=" & FormValue(recipient)
     Debug.Print Request("POST", "message", sender & "sms" & messageText & recipient, body)
 End Sub
